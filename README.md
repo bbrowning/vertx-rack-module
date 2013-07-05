@@ -12,7 +12,7 @@ directly via worker verticles.
 
     export JRUBY_HOME=/path/to/jruby_home
     export PATH=/path/to/vertx-CR2/bin:$PATH
-    vertx runmod org.torquebox~vertx-rack-module~0.1.0-SNAPSHOT -cp target/classes -conf examples/basic_rack/config.json
+    vertx runmod org.projectodd~vertx-rack-module~0.1.0-SNAPSHOT -cp target/classes -conf examples/basic_rack/config.json
 
 # Configuration
 
