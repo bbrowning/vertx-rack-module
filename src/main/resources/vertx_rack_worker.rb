@@ -1,25 +1,28 @@
-ENV['BUNDLE_GEMFILE'] = '/Users/bbrowning/torquebox_examples/rails_example/Gemfile'
-ENV['RAILS_ENV'] = 'development'
-require 'bundler/setup'
-require 'rack'
 require 'vertx'
-config_ru_path = "/Users/bbrowning/torquebox_examples/rails_example/config.ru"
 
+config = Vertx.config
+logger = Vertx.logger
+
+ENV['RAILS_ENV'] = ENV['RACK_ENV'] = config['rack_env']
+gemfile = File.join(config['root'], 'Gemfile')
+if File.exists?(gemfile)
+  ENV['BUNDLE_GEMFILE'] = gemfile
+  require 'bundler/setup'
+  require 'vertx'
+end
+
+require 'rack'
+config_ru_path = File.join(config['root'], 'config.ru')
 rack_up_script = File.read(config_ru_path)
 rack_app = eval(%Q(Rack::Builder.new {
   #{rack_up_script}
 }.to_app), TOPLEVEL_BINDING, config_ru_path, 0)
 
-logger = Vertx.logger
-
-puts "!!! Created Rack Worker"
-
 
 #
 # Handle requests via the event bus from vertx_rack_proxy
 #
-Vertx::EventBus.register_handler('rack.workers') do |message|
-  puts "!!! GOT REQUEST IN WORKER"
+Vertx::EventBus.register_handler(config['proxy_address']) do |message|
   begin
     body = message.body
     # lots of hacked up shit for now
@@ -40,7 +43,6 @@ Vertx::EventBus.register_handler('rack.workers') do |message|
     env['rack.multithread'] = true
     env['rack.multiprocess'] = true
     env['rack.run_once'] = false
-    puts "!!! CALLING RACK APP"
     rack_response = rack_app.call(env)
     status = rack_response[0]
     headers = rack_response[1]
@@ -68,3 +70,5 @@ Vertx::EventBus.register_handler('rack.workers') do |message|
     message.reply(:status => 500, :headers => {}, :body => '')
   end
 end
+
+puts "!!! Created Rack Worker"

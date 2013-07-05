@@ -1,18 +1,22 @@
-ENV['BUNDLE_GEMFILE'] = '/Users/bbrowning/torquebox_examples/rails_example/Gemfile'
-ENV['RAILS_ENV'] = 'development'
-require 'bundler/setup'
-require 'rack'
 require 'vertx'
-config_ru_path = "/Users/bbrowning/torquebox_examples/rails_example/config.ru"
 
+config = Vertx.config
+logger = Vertx.logger
+
+ENV['RAILS_ENV'] = ENV['RACK_ENV'] = config['rack_env']
+gemfile = File.join(config['root'], 'Gemfile')
+if File.exists?(gemfile)
+  ENV['BUNDLE_GEMFILE'] = gemfile
+  require 'bundler/setup'
+  require 'vertx'
+end
+
+require 'rack'
+config_ru_path = File.join(config['root'], 'config.ru')
 rack_up_script = File.read(config_ru_path)
 rack_app = eval(%Q(Rack::Builder.new {
   #{rack_up_script}
 }.to_app), TOPLEVEL_BINDING, config_ru_path, 0)
-
-logger = Vertx.logger
-
-puts "!!! Created Rack Worker Server"
 
 #
 # Handle requests directly via a worker verticle
@@ -46,7 +50,6 @@ server.request_handler do |request|
     env['rack.multithread'] = true
     env['rack.multiprocess'] = true
     env['rack.run_once'] = false
-    puts "!!! CALLING RACK APP"
     rack_response = rack_app.call(env)
     status = rack_response[0]
     headers = rack_response[1]
@@ -82,4 +85,6 @@ server.request_handler do |request|
     response.end
   end
 end
-server.listen(8080)
+server.listen(config['worker_server_port'])
+puts "Listening on port #{config['worker_server_port']} for Rack requests handled by a worker verticle"
+puts "!!! Created Rack Worker Server"

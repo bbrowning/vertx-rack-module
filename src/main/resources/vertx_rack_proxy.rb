@@ -1,16 +1,14 @@
 require 'vertx'
 
-puts "!!! Created Rack Proxy"
+config = Vertx.config
 
 server = Vertx::HttpServer.new
 server.request_handler do |request|
-  puts "!!! GOT REQUEST #{request.uri}"
   headers = request.headers.names.inject({}) do |hash, name|
     values = request.headers.get_all(name).join("\n")
     hash[name] = values
     hash
   end
-  puts "!!! REQUEST HEADERS ARE #{headers.inspect}"
   host_header = headers['Host']
   host, port = host_header.split(':')
   port = 80 if port.nil? # TODO not always http / 80
@@ -33,8 +31,7 @@ server.request_handler do |request|
       response.end
     end
   end
-  Vertx::EventBus.send('rack.workers', message) do |reply_message|
-    puts "!!! GOT RESPONSE FROM WORKER"
+  Vertx::EventBus.send(config['proxy_address'], message) do |reply_message|
     reply_body = reply_message.body
     if reply_body['status'] >= 400
       puts "!!! ERROR RESPONSE OF #{reply_body.inspect}"
@@ -57,6 +54,8 @@ server.request_handler do |request|
       response.end
     end
   end
-  puts "!!! SENT REQUEST TO WORKER"
 end
-server.listen(3000)
+server.listen(config['proxy_server_port'])
+
+puts "Listening on port #{config['proxy_server_port']} for Rack requests proxied via the event bus"
+puts "!!! Created Rack Proxy"
