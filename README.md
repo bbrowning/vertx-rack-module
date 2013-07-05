@@ -1,9 +1,10 @@
-# Vert.x Example Maven Project
+# Building
 
-Example project for creating a Vert.x module with a Gradle build.
+    mvn package
 
-By default this module contains a simple Java verticle which listens on the event bus and responds to `ping!`
-messages with `pong!`.
+# Running
 
-This example also shows you how to write tests in Java, Groovy, Ruby and Python
+    export JRUBY_HOME=/path/to/jruby_home
+    export PATH=/path/to/vertx-CR2/bin:$PATH
+    vertx runmod org.torquebox~vertx-rack-module~0.1.0-SNAPSHOT -cp target/classes
 
