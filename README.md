@@ -1,8 +1,5 @@
 This is a proof-of-concept module for running Rack or Rails
-applications on Vert.x Right now it ships with two variants, one that
-handles requests in a standard verticle and then proxies them to
-worker verticles via the event bus and one that handles requests
-directly via worker verticles.
+applications on Vert.x.
 
 # Building
 
@@ -18,8 +15,8 @@ directly via worker verticles.
 
     {
       "root": "path to rails or rack application root, required",
-      "proxy_server_port": "port to run the proxy variant on, defaults to 3000",
-      "worker_server_port": "port to run the worker variant on, defaults to 3001",
-      "proxy_address": "event bus address to send proxy requests to, defaults to config['root']",
-      "rack_env": "development, test, or production - defaults to development"
+      "port": "port to listen for HTTP connections, defaults to 3000",
+      "host": "host to listen for HTTP connections, defaults to 0.0.0.0 (any)",
+      "rack_env": "development, test, or production, defaults to development",
+      "workers": "number of HTTP worker threads to start, defaults to 5"
     }

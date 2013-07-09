@@ -1,22 +1,24 @@
 require 'vertx'
-
 config = Vertx.config
 logger = Vertx.logger
 
-ENV['RAILS_ENV'] = ENV['RACK_ENV'] = config['rack_env']
-gemfile = File.join(config['root'], 'Gemfile')
-if File.exists?(gemfile)
-  ENV['BUNDLE_GEMFILE'] = gemfile
-  require 'bundler/setup'
-  require 'vertx'
-end
+mutex = JRuby.runtime.evalScriptlet("$vertx_rack_mutex ||= Mutex.new")
+rack_app = mutex.synchronize do
+  ENV['RAILS_ENV'] = ENV['RACK_ENV'] = config['rack_env']
+  gemfile = File.join(config['root'], 'Gemfile')
+  if File.exists?(gemfile)
+    ENV['BUNDLE_GEMFILE'] = gemfile
+    require 'bundler/setup'
+    require 'vertx'
+  end
 
-require 'rack'
-config_ru_path = File.join(config['root'], 'config.ru')
-rack_up_script = File.read(config_ru_path)
-rack_app = eval(%Q(Rack::Builder.new {
-  #{rack_up_script}
-}.to_app), TOPLEVEL_BINDING, config_ru_path, 0)
+  require 'rack'
+  config_ru_path = File.join(config['root'], 'config.ru')
+  rack_up_script = File.read(config_ru_path)
+  eval(%Q(Rack::Builder.new {
+    #{rack_up_script}
+  }.to_app), TOPLEVEL_BINDING, config_ru_path, 0)
+end
 
 #
 # Handle requests directly via a worker verticle
@@ -85,6 +87,6 @@ server.request_handler do |request|
     response.end
   end
 end
-server.listen(config['worker_server_port'])
-puts "Listening on port #{config['worker_server_port']} for Rack requests handled by a worker verticle"
-puts "!!! Created Rack Worker Server"
+server.listen(config['port'], config['host']) do |error|
+  puts "Listening on #{config['host']}:#{config['port']} for HTTP requests"  unless error
+end
