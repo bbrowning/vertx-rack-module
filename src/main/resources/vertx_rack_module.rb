@@ -16,4 +16,12 @@ unless module_config['root']
 end
 
 # A worker verticle that directly accepts HTTP requests
-Vertx.deploy_worker_verticle('vertx_rack_worker_server.rb', module_config, module_config['workers']);
+# We deploy one first to load the Rack app then all the rest
+# to use the already-loaded Rack app.
+Vertx.deploy_worker_verticle('vertx_rack_worker_server.rb', module_config, 1) do
+  remaining_workers = module_config['workers'] - 1
+  if remaining_workers > 0
+    Vertx.deploy_worker_verticle('vertx_rack_worker_server.rb', module_config,
+                                 remaining_workers)
+  end
+end

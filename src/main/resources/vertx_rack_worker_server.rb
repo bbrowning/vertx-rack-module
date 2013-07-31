@@ -2,8 +2,9 @@ require 'vertx'
 config = Vertx.config
 logger = Vertx.logger
 
-mutex = JRuby.runtime.evalScriptlet("$vertx_rack_mutex ||= Mutex.new")
-rack_app = mutex.synchronize do
+# Only load the rack app once across all worker verticles
+rack_app = JRuby.runtime.evalScriptlet("$vertx_rack_app")
+if rack_app.nil?
   ENV['RAILS_ENV'] = ENV['RACK_ENV'] = config['rack_env']
   gemfile = File.join(config['root'], 'Gemfile')
   if File.exists?(gemfile)
@@ -15,9 +16,9 @@ rack_app = mutex.synchronize do
   require 'rack'
   config_ru_path = File.join(config['root'], 'config.ru')
   rack_up_script = File.read(config_ru_path)
-  eval(%Q(Rack::Builder.new {
-    #{rack_up_script}
-  }.to_app), TOPLEVEL_BINDING, config_ru_path, 0)
+
+  JRuby.runtime.evalScriptlet("$vertx_rack_app = eval(%q(Rack::Builder.new { #{rack_up_script} }.to_app))")
+  rack_app = JRuby.runtime.evalScriptlet("$vertx_rack_app")
 end
 
 #
@@ -52,6 +53,7 @@ server.request_handler do |request|
     env['rack.multithread'] = true
     env['rack.multiprocess'] = true
     env['rack.run_once'] = false
+
     rack_response = rack_app.call(env)
     status = rack_response[0]
     headers = rack_response[1]
@@ -88,5 +90,5 @@ server.request_handler do |request|
   end
 end
 server.listen(config['port'], config['host']) do |error|
-  puts "Listening on #{config['host']}:#{config['port']} for HTTP requests"  unless error
+  puts "Listening on #{config['host']}:#{config['port']} for HTTP requests" unless error
 end
